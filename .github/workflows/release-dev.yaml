@@ -16,7 +16,7 @@ jobs:
         with:
           go-version: 1.15
       - name: Build
-        run: ./build.sh
+        run: ./build-arm.sh
   test:
     runs-on: ubuntu-latest
     steps:
@@ -27,10 +27,10 @@ jobs:
           go-version: 1.15
       - name: Test
         run: go test -v -coverprofile coverage.out -covermode atomic ./... 
-      - name: Publish coverage
-        uses: codecov/codecov-action@v1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+      # - name: Publish coverage
+      #   uses: codecov/codecov-action@v1
+      #   with:
+      #     token: ${{ secrets.CODECOV_TOKEN }}
   publish:
     needs:
       - build
@@ -44,7 +44,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
           file: dockerfiles/Dockerfile.self-contained
-          repository: containrrr/watchtower
+          repository: meibye/watchtower
           tags: latest-dev
       - name: Publish to GHCR
         uses: jerray/publish-docker-action@master
@@ -53,5 +53,5 @@ jobs:
           password: ${{ secrets.BOT_GHCR_PAT }}
           file: dockerfiles/Dockerfile.self-contained
           registry: ghcr.io
-          repository: containrrr/watchtower
+          repository: meibye/watchtower
           tags: latest-dev
