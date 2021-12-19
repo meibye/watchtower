@@ -23,7 +23,7 @@ var _ = Describe("the container", func() {
 				c := mockContainerWithPortBindings()
 				c.containerInfo = nil
 				err := c.VerifyConfiguration()
-				Expect(err).To(Equal(errorInvalidConfig))
+				Expect(err).To(Equal(errorNoContainerInfo))
 			})
 		})
 		When("verifying a container with no config", func() {
@@ -214,6 +214,20 @@ var _ = Describe("the container", func() {
 				})
 			})
 		})
+		
+		When("there is a pre or post update timeout", func() {
+ 				It("should return minute values", func() {
+ 					c = mockContainerWithLabels(map[string]string{
+ 						"com.centurylinklabs.watchtower.lifecycle.pre-update-timeout":  "3",
+ 						"com.centurylinklabs.watchtower.lifecycle.post-update-timeout": "5",
+ 					})
+ 					preTimeout := c.PreUpdateTimeout()
+ 					Expect(preTimeout).To(Equal(3))
+ 					postTimeout := c.PostUpdateTimeout()
+ 					Expect(postTimeout).To(Equal(5))
+ 				})
+ 			})
+		
 	})
 })
 
