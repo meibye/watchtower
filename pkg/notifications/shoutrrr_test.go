@@ -1,6 +1,8 @@
 package notifications
 
 import (
+	"time"
+
 	"github.com/containrrr/shoutrrr/pkg/types"
 	"github.com/containrrr/watchtower/internal/actions/mocks"
 	"github.com/containrrr/watchtower/internal/flags"
@@ -46,9 +48,15 @@ var mockDataAllFresh = Data{
 }
 
 func mockDataFromStates(states ...s.State) Data {
+	hostname := "Mock"
+	prefix := ""
 	return Data{
 		Entries: legacyMockData.Entries,
 		Report:  mocks.CreateMockProgressReport(states...),
+		StaticData: StaticData{
+			Title: GetTitle(hostname, prefix),
+			Host:  hostname,
+		},
 	}
 }
 
@@ -72,7 +80,7 @@ var _ = Describe("Shoutrrr", func() {
 				cmd := new(cobra.Command)
 				flags.RegisterNotificationFlags(cmd)
 
-				shoutrrr := createNotifier([]string{}, logrus.AllLevels, "", true)
+				shoutrrr := createNotifier([]string{}, logrus.AllLevels, "", true, StaticData{})
 
 				entries := []*logrus.Entry{
 					{
@@ -175,6 +183,22 @@ var _ = Describe("Shoutrrr", func() {
 
 		})
 
+		When("using a template referencing Title", func() {
+			It("should contain the title in the output", func() {
+				expected := `Watchtower updates on Mock`
+				data := mockDataFromStates(s.UpdatedState)
+				Expect(getTemplatedResult(`{{ .Title }}`, false, data)).To(Equal(expected))
+			})
+		})
+
+		When("using a template referencing Host", func() {
+			It("should contain the hostname in the output", func() {
+				expected := `Mock`
+				data := mockDataFromStates(s.UpdatedState)
+				Expect(getTemplatedResult(`{{ .Host }}`, false, data)).To(Equal(expected))
+			})
+		})
+
 		Describe("the default template", func() {
 			When("all containers are fresh", func() {
 				It("should return an empty string", func() {
@@ -212,7 +236,7 @@ Turns out everything is on fire
 	When("batching notifications", func() {
 		When("no messages are queued", func() {
 			It("should not send any notification", func() {
-				shoutrrr := newShoutrrrNotifier("", allButTrace, true, "", "logger://")
+				shoutrrr := newShoutrrrNotifier("", allButTrace, true, StaticData{}, time.Duration(0), "logger://")
 				shoutrrr.StartNotification()
 				shoutrrr.SendNotification(nil)
 				Consistently(logBuffer).ShouldNot(gbytes.Say(`Shoutrrr:`))
@@ -220,12 +244,23 @@ Turns out everything is on fire
 		})
 		When("at least one message is queued", func() {
 			It("should send a notification", func() {
-				shoutrrr := newShoutrrrNotifier("", allButTrace, true, "", "logger://")
+				shoutrrr := newShoutrrrNotifier("", allButTrace, true, StaticData{}, time.Duration(0), "logger://")
 				shoutrrr.StartNotification()
 				logrus.Info("This log message is sponsored by ContainrrrVPN")
 				shoutrrr.SendNotification(nil)
 				Eventually(logBuffer).Should(gbytes.Say(`Shoutrrr: This log message is sponsored by ContainrrrVPN`))
 			})
+		})
+	})
+
+	When("the title data field is empty", func() {
+		It("should not have set the title param", func() {
+			shoutrrr := createNotifier([]string{"logger://"}, allButTrace, "", true, StaticData{
+				Host:  "test.host",
+				Title: "",
+			})
+			_, found := shoutrrr.params.Title()
+			Expect(found).ToNot(BeTrue())
 		})
 	})
 
@@ -276,13 +311,14 @@ func sendNotificationsWithBlockingRouter(legacy bool) (*shoutrrrTypeNotifier, *b
 		done:           make(chan bool),
 		Router:         router,
 		legacyTemplate: legacy,
+		params:         &types.Params{},
 	}
 
 	entry := &logrus.Entry{
 		Message: "foo bar",
 	}
 
-	go sendNotifications(shoutrrr)
+	go sendNotifications(shoutrrr, time.Duration(0))
 
 	shoutrrr.StartNotification()
 	_ = shoutrrr.Fire(entry)

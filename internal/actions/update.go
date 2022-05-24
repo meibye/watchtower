@@ -2,6 +2,8 @@ package actions
 
 import (
 	"errors"
+	"strings"
+
 	"github.com/containrrr/watchtower/internal/util"
 	"github.com/containrrr/watchtower/pkg/container"
 	"github.com/containrrr/watchtower/pkg/lifecycle"
@@ -68,7 +70,7 @@ func Update(client container.Client, params types.UpdateParams) (types.Report, e
 		return nil, err
 	}
 
-	checkDependencies(containers)
+	UpdateImplicitRestart(containers)
 
 	var containersToUpdate []container.Container
 	if !params.MonitorOnly {
@@ -107,8 +109,10 @@ func performRollingRestart(containers []container.Container, client container.Cl
 			} else {
 				if err := restartStaleContainer(containers[i], client, params); err != nil {
 					failed[containers[i].ID()] = err
+				} else if containers[i].Stale {
+					// Only add (previously) stale containers' images to cleanup
+					cleanupImageIDs[containers[i].ImageID()] = true
 				}
-				cleanupImageIDs[containers[i].ImageID()] = true
 			}
 		}
 	}
@@ -126,7 +130,8 @@ func stopContainersInReversedOrder(containers []container.Container, client cont
 		if err := stopStaleContainer(containers[i], client, params); err != nil {
 			failed[containers[i].ID()] = err
 		} else {
-			stopped[containers[i].ImageID()] = true
+			// NOTE: If a container is restarted due to a dependency this might be empty
+			stopped[containers[i].SafeImageID()] = true
 		}
 
 	}
@@ -142,6 +147,14 @@ func stopStaleContainer(container container.Container, client container.Client, 
 	if !container.ToRestart() {
 		return nil
 	}
+
+	// Perform an additional check here to prevent us from stopping a linked container we cannot restart
+	if container.LinkedToRestarting {
+		if err := container.VerifyConfiguration(); err != nil {
+			return err
+		}
+	}
+
 	if params.LifecycleHooks {
 		skipUpdate, err := lifecycle.ExecutePreUpdateCommand(client, container)
 		if err != nil {
@@ -170,11 +183,13 @@ func restartContainersInSortedOrder(containers []container.Container, client con
 		if !c.ToRestart() {
 			continue
 		}
-		if stoppedImages[c.ImageID()] {
+		if stoppedImages[c.SafeImageID()] {
 			if err := restartStaleContainer(c, client, params); err != nil {
 				failed[c.ID()] = err
+			} else if c.Stale {
+				// Only add (previously) stale containers' images to cleanup
+				cleanupImageIDs[c.ImageID()] = true
 			}
-			cleanupImageIDs[c.ImageID()] = true
 		}
 	}
 
@@ -187,6 +202,9 @@ func restartContainersInSortedOrder(containers []container.Container, client con
 
 func cleanupImages(client container.Client, imageIDs map[types.ImageID]bool) {
 	for imageID := range imageIDs {
+		if imageID == "" {
+			continue
+		}
 		if err := client.RemoveImageByID(imageID); err != nil {
 			log.Error(err)
 		}
@@ -216,24 +234,41 @@ func restartStaleContainer(container container.Container, client container.Clien
 	return nil
 }
 
-func checkDependencies(containers []container.Container) {
+// UpdateImplicitRestart iterates through the passed containers, setting the
+// `LinkedToRestarting` flag if any of it's linked containers are marked for restart
+func UpdateImplicitRestart(containers []container.Container) {
 
-	for _, c := range containers {
+	for ci, c := range containers {
 		if c.ToRestart() {
+			// The container is already marked for restart, no need to check
 			continue
 		}
 
-	LinkLoop:
-		for _, linkName := range c.Links() {
-			for _, candidate := range containers {
-				if candidate.Name() != linkName {
-					continue
-				}
-				if candidate.ToRestart() {
-					c.LinkedToRestarting = true
-					break LinkLoop
-				}
+		if link := linkedContainerMarkedForRestart(c.Links(), containers); link != "" {
+			log.WithFields(log.Fields{
+				"restarting": link,
+				"linked":     c.Name(),
+			}).Debug("container is linked to restarting")
+			// NOTE: To mutate the array, the `c` variable cannot be used as it's a copy
+			containers[ci].LinkedToRestarting = true
+		}
+
+	}
+}
+
+// linkedContainerMarkedForRestart returns the name of the first link that matches a
+// container marked for restart
+func linkedContainerMarkedForRestart(links []string, containers []container.Container) string {
+	for _, linkName := range links {
+		// Since the container names need to start with '/', let's prepend it if it's missing
+		if !strings.HasPrefix(linkName, "/") {
+			linkName = "/" + linkName
+		}
+		for _, candidate := range containers {
+			if candidate.Name() == linkName && candidate.ToRestart() {
+				return linkName
 			}
 		}
 	}
+	return ""
 }

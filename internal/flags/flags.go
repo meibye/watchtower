@@ -1,6 +1,7 @@
 package flags
 
 import (
+	"errors"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -184,6 +185,12 @@ func RegisterNotificationFlags(rootCmd *cobra.Command) {
 		viper.GetString("WATCHTOWER_NOTIFICATIONS_LEVEL"),
 		"The log level used for sending notifications. Possible values: panic, fatal, error, warn, info or debug")
 
+	flags.IntP(
+		"notifications-delay",
+		"",
+		viper.GetInt("WATCHTOWER_NOTIFICATIONS_DELAY"),
+		"Delay before sending notifications, expressed in seconds")
+
 	flags.StringP(
 		"notifications-hostname",
 		"",
@@ -320,6 +327,16 @@ Should only be used for testing.`)
 		viper.GetBool("WATCHTOWER_NOTIFICATION_REPORT"),
 		"Use the session report as the notification template data")
 
+	flags.StringP(
+		"notification-title-tag",
+		"",
+		viper.GetString("WATCHTOWER_NOTIFICATION_TITLE_TAG"),
+		"Title prefix tag for notifications")
+
+	flags.Bool("notification-skip-title",
+		viper.GetBool("WATCHTOWER_NOTIFICATION_SKIP_TITLE"),
+		"Do not pass the title param to notifications")
+
 	flags.String(
 		"warn-on-head-failure",
 		viper.GetString("WATCHTOWER_WARN_ON_HEAD_FAILURE"),
@@ -452,9 +469,13 @@ func getSecretFromFile(flags *pflag.FlagSet, secret string) {
 }
 
 func isFile(s string) bool {
-	_, err := os.Stat(s)
-	if os.IsNotExist(err) {
+	firstColon := strings.IndexRune(s, ':')
+	if firstColon != 1 && firstColon != -1 {
+		// If the string contains a ':', but it's not the second character, it's probably not a file
+		// and will cause a fatal error on windows if stat'ed
+		// This still allows for paths that start with 'c:\' etc.
 		return false
 	}
-	return true
+	_, err := os.Stat(s)
+	return !errors.Is(err, os.ErrNotExist)
 }

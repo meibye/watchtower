@@ -2,11 +2,14 @@ module github.com/containrrr/watchtower
 
 go 1.12
 
+// Use non-vulnerable runc (until github.com/containerd/containerd v1.6.0 is stable)
+replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.3
+
 require (
-	github.com/containerd/containerd v1.5.7 // indirect
-	github.com/containrrr/shoutrrr v0.5.2
+	github.com/containerd/containerd v1.5.9 // indirect
+	github.com/containrrr/shoutrrr v0.5.3
 	github.com/docker/cli v20.10.8+incompatible
-	github.com/docker/distribution v2.7.1+incompatible
+	github.com/docker/distribution v2.8.0+incompatible
 	github.com/docker/docker v20.10.8+incompatible
 	github.com/docker/docker-credential-helpers v0.6.1 // indirect
 	github.com/docker/go-connections v0.4.0
@@ -19,7 +22,7 @@ require (
 	github.com/prometheus/client_golang v1.7.1
 	github.com/robfig/cron v0.0.0-20180505203441-b41be1df6967
 	github.com/sirupsen/logrus v1.8.1
-	github.com/spf13/cobra v1.0.0
+	github.com/spf13/cobra v1.4.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.6.3
 	github.com/stretchr/testify v1.6.1

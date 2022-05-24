@@ -5,6 +5,7 @@ import (
 	stdlog "log"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/containrrr/shoutrrr"
 	"github.com/containrrr/shoutrrr/pkg/types"
@@ -57,6 +58,7 @@ type shoutrrrTypeNotifier struct {
 	done           chan bool
 	legacyTemplate bool
 	params         *types.Params
+	data           StaticData
 }
 
 // GetScheme returns the scheme part of a Shoutrrr URL
@@ -77,19 +79,18 @@ func (n *shoutrrrTypeNotifier) GetNames() []string {
 	return names
 }
 
-func newShoutrrrNotifier(tplString string, acceptedLogLevels []log.Level, legacy bool, title string, urls ...string) t.Notifier {
+func newShoutrrrNotifier(tplString string, acceptedLogLevels []log.Level, legacy bool, data StaticData, delay time.Duration, urls ...string) t.Notifier {
 
-	notifier := createNotifier(urls, acceptedLogLevels, tplString, legacy)
-	notifier.params = &types.Params{"title": title}
+	notifier := createNotifier(urls, acceptedLogLevels, tplString, legacy, data)
 	log.AddHook(notifier)
 
 	// Do the sending in a separate goroutine so we don't block the main process.
-	go sendNotifications(notifier)
+	go sendNotifications(notifier, delay)
 
 	return notifier
 }
 
-func createNotifier(urls []string, levels []log.Level, tplString string, legacy bool) *shoutrrrTypeNotifier {
+func createNotifier(urls []string, levels []log.Level, tplString string, legacy bool, data StaticData) *shoutrrrTypeNotifier {
 	tpl, err := getShoutrrrTemplate(tplString, legacy)
 	if err != nil {
 		log.Errorf("Could not use configured notification template: %s. Using default template", err)
@@ -101,6 +102,11 @@ func createNotifier(urls []string, levels []log.Level, tplString string, legacy 
 		log.Fatalf("Failed to initialize Shoutrrr notifications: %s\n", err.Error())
 	}
 
+	params := &types.Params{}
+	if data.Title != "" {
+		params.SetTitle(data.Title)
+	}
+
 	return &shoutrrrTypeNotifier{
 		Urls:           urls,
 		Router:         r,
@@ -109,11 +115,14 @@ func createNotifier(urls []string, levels []log.Level, tplString string, legacy 
 		logLevels:      levels,
 		template:       tpl,
 		legacyTemplate: legacy,
+		data:           data,
+		params:         params,
 	}
 }
 
-func sendNotifications(n *shoutrrrTypeNotifier) {
+func sendNotifications(n *shoutrrrTypeNotifier, delay time.Duration) {
 	for msg := range n.messages {
+		time.Sleep(delay)
 		errs := n.Router.Send(msg, n.params)
 
 		for i, err := range errs {
@@ -145,7 +154,7 @@ func (n *shoutrrrTypeNotifier) buildMessage(data Data) (string, error) {
 }
 
 func (n *shoutrrrTypeNotifier) sendEntries(entries []*log.Entry, report t.Report) {
-	msg, err := n.buildMessage(Data{entries, report})
+	msg, err := n.buildMessage(Data{n.data, entries, report})
 
 	if msg == "" {
 		// Log in go func in case we entered from Fire to avoid stalling
@@ -234,8 +243,15 @@ func getShoutrrrTemplate(tplString string, legacy bool) (tpl *template.Template,
 	return
 }
 
+// StaticData is the part of the notification template data model set upon initialization
+type StaticData struct {
+	Title string
+	Host  string
+}
+
 // Data is the notification template data model
 type Data struct {
+	StaticData
 	Entries []*log.Entry
 	Report  t.Report
 }
