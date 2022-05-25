@@ -14,7 +14,7 @@ RUN apk add --no-cache \
     tzdata
 
 RUN git clone --branch "${WATCHTOWER_VERSION}" https://github.com/meibye/watchtower.git
-
+# Modify line below
 RUN \
   cd watchtower && \
   \
