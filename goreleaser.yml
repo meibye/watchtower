@@ -94,7 +94,7 @@ dockers:
     image_templates:
       - meibye/watchtower:armhf-{{ .Version }}
       - meibye/watchtower:armhf-latest
-      - ghcr.io/meibye/watchtower:armhf-{{ .Version }}
-      - ghcr.io/meibye/watchtower:armhf-latest
+      # - ghcr.io/meibye/watchtower:armhf-{{ .Version }}
+      # - ghcr.io/meibye/watchtower:armhf-latest
     binaries:
       - watchtower
