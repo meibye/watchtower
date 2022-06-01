@@ -94,80 +94,117 @@ jobs:
           mkdir -p ~/.docker/ && \
           echo '{"experimental": "enabled"}' > ~/.docker/config.json
       - name: Create manifest for version
+        # run: |
+        #   export DH_TAG=$(echo $TAG | sed 's/^v*//')
+        #   docker manifest create \
+        #     meibye/watchtower:$DH_TAG \
+        #     meibye/watchtower:amd64-$DH_TAG \
+        #     meibye/watchtower:i386-$DH_TAG \
+        #     meibye/watchtower:armhf-$DH_TAG \
+        #     meibye/watchtower:arm64v8-$DH_TAG
+        #   docker manifest create \
+        #     ghcr.io/meibye/watchtower:$DH_TAG \
+        #     ghcr.io/meibye/watchtower:amd64-$DH_TAG \
+        #     ghcr.io/meibye/watchtower:i386-$DH_TAG \
+        #     ghcr.io/meibye/watchtower:armhf-$DH_TAG \
+        #     ghcr.io/meibye/watchtower:arm64v8-$DH_TAG
         run: |
           export DH_TAG=$(echo $TAG | sed 's/^v*//')
           docker manifest create \
             meibye/watchtower:$DH_TAG \
-            meibye/watchtower:amd64-$DH_TAG \
-            meibye/watchtower:i386-$DH_TAG \
-            meibye/watchtower:armhf-$DH_TAG \
-            meibye/watchtower:arm64v8-$DH_TAG
+            meibye/watchtower:armhf-$DH_TAG
           docker manifest create \
             ghcr.io/meibye/watchtower:$DH_TAG \
-            ghcr.io/meibye/watchtower:amd64-$DH_TAG \
-            ghcr.io/meibye/watchtower:i386-$DH_TAG \
-            ghcr.io/meibye/watchtower:armhf-$DH_TAG \
-            ghcr.io/meibye/watchtower:arm64v8-$DH_TAG
+            ghcr.io/meibye/watchtower:armhf-$DH_TAG
       - name: Annotate manifest for version
+        # run: |
+        #   for REPO in '' ghcr.io/ ; do
+          
+        #   docker manifest annotate \
+        #     ${REPO}meibye/watchtower:$(echo $TAG | sed 's/^v*//') \
+        #     ${REPO}meibye/watchtower:i386-$(echo $TAG | sed 's/^v*//') \
+        #     --os linux \
+        #     --arch 386
+          
+        #   docker manifest annotate \
+        #     ${REPO}meibye/watchtower:$(echo $TAG | sed 's/^v*//') \
+        #     ${REPO}meibye/watchtower:armhf-$(echo $TAG | sed 's/^v*//') \
+        #     --os linux \
+        #     --arch arm
+      
+        #   docker manifest annotate \
+        #     ${REPO}meibye/watchtower:$(echo $TAG | sed 's/^v*//') \
+        #     ${REPO}meibye/watchtower:arm64v8-$(echo $TAG | sed 's/^v*//') \
+        #     --os linux \
+        #     --arch arm64 \
+        #     --variant v8
+            
+        #     done
         run: |
           for REPO in '' ghcr.io/ ; do
-          
-          docker manifest annotate \
-            ${REPO}meibye/watchtower:$(echo $TAG | sed 's/^v*//') \
-            ${REPO}meibye/watchtower:i386-$(echo $TAG | sed 's/^v*//') \
-            --os linux \
-            --arch 386
           
           docker manifest annotate \
             ${REPO}meibye/watchtower:$(echo $TAG | sed 's/^v*//') \
             ${REPO}meibye/watchtower:armhf-$(echo $TAG | sed 's/^v*//') \
             --os linux \
             --arch arm
-      
-          docker manifest annotate \
-            ${REPO}meibye/watchtower:$(echo $TAG | sed 's/^v*//') \
-            ${REPO}meibye/watchtower:arm64v8-$(echo $TAG | sed 's/^v*//') \
-            --os linux \
-            --arch arm64 \
-            --variant v8
             
-            done
+          done
+
       - name: Create manifest for latest
+        # run: |
+        #   docker manifest create \
+        #     meibye/watchtower:latest \
+        #     meibye/watchtower:amd64-latest \
+        #     meibye/watchtower:i386-latest \
+        #     meibye/watchtower:armhf-latest \
+        #     meibye/watchtower:arm64v8-latest
+        #   docker manifest create \
+        #     ghcr.io/meibye/watchtower:latest \
+        #     ghcr.io/meibye/watchtower:amd64-latest \
+        #     ghcr.io/meibye/watchtower:i386-latest \
+        #     ghcr.io/meibye/watchtower:armhf-latest \
+        #     ghcr.io/meibye/watchtower:arm64v8-latest
         run: |
           docker manifest create \
             meibye/watchtower:latest \
-            meibye/watchtower:amd64-latest \
-            meibye/watchtower:i386-latest \
-            meibye/watchtower:armhf-latest \
-            meibye/watchtower:arm64v8-latest
+            meibye/watchtower:armhf-latest
           docker manifest create \
             ghcr.io/meibye/watchtower:latest \
-            ghcr.io/meibye/watchtower:amd64-latest \
-            ghcr.io/meibye/watchtower:i386-latest \
-            ghcr.io/meibye/watchtower:armhf-latest \
-            ghcr.io/meibye/watchtower:arm64v8-latest
+            ghcr.io/meibye/watchtower:armhf-latest
+
       - name: Annotate manifest for latest
+        # run: |
+        #   for REPO in '' ghcr.io/ ; do
+
+        #   docker manifest annotate \
+        #     ${REPO}meibye/watchtower:latest \
+        #     ${REPO}meibye/watchtower:i386-latest \
+        #     --os linux \
+        #     --arch 386
+      
+        #   docker manifest annotate \
+        #     ${REPO}meibye/watchtower:latest \
+        #     ${REPO}meibye/watchtower:armhf-latest \
+        #     --os linux \
+        #     --arch arm
+            
+        #   docker manifest annotate \
+        #     ${REPO}meibye/watchtower:latest \
+        #     ${REPO}meibye/watchtower:arm64v8-latest \
+        #     --os linux \
+        #     --arch arm64 \
+        #     --variant v8
+
+        #   done
         run: |
           for REPO in '' ghcr.io/ ; do
-
-          docker manifest annotate \
-            ${REPO}meibye/watchtower:latest \
-            ${REPO}meibye/watchtower:i386-latest \
-            --os linux \
-            --arch 386
       
           docker manifest annotate \
             ${REPO}meibye/watchtower:latest \
             ${REPO}meibye/watchtower:armhf-latest \
             --os linux \
             --arch arm
-            
-          docker manifest annotate \
-            ${REPO}meibye/watchtower:latest \
-            ${REPO}meibye/watchtower:arm64v8-latest \
-            --os linux \
-            --arch arm64 \
-            --variant v8
 
           done
       - name: Push manifests to Dockerhub
@@ -187,13 +224,13 @@ jobs:
             docker manifest push ghcr.io/meibye/watchtower:$(echo $TAG | sed 's/^v*//') && \
             docker manifest push ghcr.io/meibye/watchtower:latest
 
-  renew-docs:
-    name: Refresh pkg.go.dev
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-    - name: Pull new module version
-      uses: andrewslotin/go-proxy-pull-action@master
+  # renew-docs:
+  #   name: Refresh pkg.go.dev
+  #   needs: build
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - name: Pull new module version
+  #     uses: andrewslotin/go-proxy-pull-action@master
 
   
   
