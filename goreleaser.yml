@@ -19,7 +19,7 @@ archives:
       arm: armhf
       # arm64: arm64v8
       # amd64: amd64
-      386: 386
+      # 386: 386
       # darwin: macOS
       linux: linux
     # format_overrides:
@@ -86,7 +86,7 @@ dockers:
   #     - watchtower
   - 
     use_buildx: true
-    build_flag_templates: [ "--platform=linux/arm/v6" ]
+    build_flag_templates: [ "--platform=linux/arm/v7" ]
     goos: linux
     goarch: arm
     goarm: 7
